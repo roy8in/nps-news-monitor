@@ -1,63 +1,82 @@
 import os
 import requests
 import time
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 
+# 환경 변수 로드
 NAVER_ID = os.environ.get('NAVER_CLIENT_ID')
 NAVER_SECRET = os.environ.get('NAVER_CLIENT_SECRET')
 TG_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TG_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-# 검색어 최적화: 반드시 '국민연금'과 '김성주'가 포함된 결과만
-KEYWORD = '"국민연금" "김성주"' 
+KEYWORD = '"국민연금" "김성주"'
 FILE_PATH = "last_link.txt"
 
-def get_news_list():
-    # 최근 10개의 기사를 가져옴 (누락 방지)
-    url = f"https://openapi.naver.com/v1/search/news.json?query={KEYWORD}&display=10&sort=date"
-    headers = {"X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET}
+def format_date(date_str):
+    """네이버의 RFC 822 날짜 형식을 '2025-12-21 14:30' 형태로 변환"""
     try:
-        res = requests.get(url, headers=headers).json()
-        return res.get('items', [])
-    except Exception as e:
-        print(f"Error: {e}")
-        return []
+        dt = parsedate_to_datetime(date_str)
+        return dt.strftime('%Y-%m-%d %H:%M')
+    except:
+        return date_str
+
+def clean_html(text):
+    """HTML 태그 및 특수문자 제거"""
+    if not text: return ""
+    return text.replace('<b>', '').replace('</b>', '').replace('&quot;', '"').replace('&apos;', "'").replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
 
 def main():
-    items = get_news_list()
+    url = f"https://openapi.naver.com/v1/search/news.json?query={KEYWORD}&display=10&sort=date"
+    headers = {"X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET}
+    
+    try:
+        res = requests.get(url, headers=headers).json()
+        items = res.get('items', [])
+    except Exception as e:
+        print(f"API 요청 에러: {e}")
+        return
+
     if not items:
         return
 
-    # 저장된 마지막 기사 링크 읽기
-    if os.path.exists(FILE_PATH):
+    # 마지막 링크 읽기
+    if not os.path.exists(FILE_PATH):
+        last_link = ""
+    else:
         with open(FILE_PATH, "r") as f:
             last_link = f.read().strip()
-    else:
-        last_link = ""
 
     new_articles = []
     for item in items:
         if item['link'] == last_link:
-            break  # 저장된 링크를 만나면 그 이후는 이미 본 기사임
+            break
         new_articles.append(item)
-
-    # 기사가 거꾸로(최신순) 나열되어 있으므로, 오래된 것부터 알림 보내기 위해 뒤집음
+    
     new_articles.reverse()
 
     for article in new_articles:
-        title = article['title'].replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
-        msg = f"📢 NPS CEO 기사 알림\n\n제목: {title}\n링크: {article['link']}"
+        title = clean_html(article['title'])
+        pub_date = format_date(article['pubDate'])
+        description = clean_html(article['description']) # 요약 내용 (기자/언론사 정보 포함 가능성 높음)
+        link = article['link']
+        
+        # 메시지 구성
+        message = (
+            f"🚨 **NPS CEO 새 기사 알림**\n\n"
+            f"📌 **제목:** {title}\n"
+            f"⏰ **시간:** {pub_date}\n"
+            f"📝 **요약:** {description}...\n"
+            f"🔗 **링크:** {link}"
+        )
         
         send_url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-        requests.get(send_url, params={"chat_id": TG_CHAT_ID, "text": msg})
-        time.sleep(1) # 텔레그램 도배 방지 짧은 대기
+        requests.get(send_url, params={"chat_id": TG_CHAT_ID, "text": message, "parse_mode": "Markdown"})
+        time.sleep(1)
 
-    # 가장 최신 기사의 링크를 파일에 저장
-    if new_articles:
+    if items:
         with open(FILE_PATH, "w") as f:
             f.write(items[0]['link'])
-        print(f"{len(new_articles)}개의 새로운 기사 발견!")
-    else:
-        print("새로운 기사 없음.")
 
 if __name__ == "__main__":
     main()
