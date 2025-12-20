@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write   # 파일 쓰기 권한
+      pull-requests: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
