@@ -1,0 +1,37 @@
+name: NPS CEO News Monitor Bot
+
+on:
+  schedule:
+    - cron: '*/1 0-13,21-23 * * *'  # 1분마다 자동 실행, UTC 21:00 - 23:59(KST 06:00 - 08:59), UTC 00:00 - 13:59 (KST 09:00 - 22:59)
+  workflow_dispatch:      # 우리가 수동으로 실행해볼 수 있게 함
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run bot
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python news_bot.py
+
+      - name: Commit and Push changes # last_link.txt를 업데이트하기 위함
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_link.txt
+          git commit -m "Update last link [skip ci]" || exit 0
+          git push
