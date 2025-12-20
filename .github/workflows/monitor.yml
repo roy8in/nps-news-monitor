@@ -27,7 +27,7 @@ jobs:
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python news_bot.py
+        run: python nps_news_bot.py
 
       - name: Commit and Push changes # last_link.txt를 업데이트하기 위함
         run: |
