@@ -32,7 +32,7 @@
 
 ## 🚀 시작하기
 
-* **봇 구독하기**: [NPS CEO News Monitor Bot](https://t.me/nps_news_monitor_bot) 링크를 클릭하고 **[시작]** 을 누르세요.
+* **텔레그램 채널 구독하기**: [NPS CEO News Monitor](https://t.me/nps_ceo_news_monitor) 링크를 클릭하고 **[시작]** 을 누르세요.
 
 <br>  
 
