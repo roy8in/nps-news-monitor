@@ -34,7 +34,6 @@ jobs:
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 이 줄을 꼭 추가하세요!
         run: python nps_news_bot.py
         
       - name: Commit and Push changes # last_link.txt를 업데이트하기 위함
