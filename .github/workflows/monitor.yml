@@ -36,13 +36,12 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python nps_news_bot.py
         
-      - name: Commit and Push changes # last_link.txt를 업데이트하기 위함
+      - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_link.txt
-          git commit -m "Update last link [skip ci]" || exit 0
-          git push
+          git add news_history.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update news history [skip ci]" && git push)
 
       - name: Commit and Push CSV changes
         run: |
