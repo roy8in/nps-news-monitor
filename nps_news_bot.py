@@ -12,8 +12,19 @@ TG_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TG_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
 KEYWORD = '"국민연금" "김성주"'
-FILE_PATH = "last_link.txt"
-CSV_FILE = "news_history.csv"
+CSV_FILE = "news_history.csv" # 이제 이 파일이 중복 여부의 기준이 됩니다
+
+def get_processed_links():
+    """기존에 처리된 기사 링크들을 CSV에서 읽어옵니다."""
+    links = set()
+    if os.path.exists(CSV_FILE):
+        with open(CSV_FILE, mode='r', encoding='utf-8-sig') as f:
+            reader = csv.reader(f)
+            next(reader, None) # 헤더 건너뛰기
+            for row in reader:
+                if len(row) > 2: # URL 컬럼 추출
+                    links.add(row[2])
+    return links
 
 def save_to_csv(data):
     """기사 정보를 CSV에 누적 저장"""
@@ -21,23 +32,25 @@ def save_to_csv(data):
     with open(CSV_FILE, mode='a', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(['Date', 'Title', 'URL']) # 감성 항목 제외
+            writer.writerow(['Date', 'Title', 'URL'])
         writer.writerow(data)
 
 def clean_html(text):
-    """HTML 태그 제거"""
     if not text: return ""
     return text.replace('<b>', '').replace('</b>', '').replace('&quot;', '"').replace('&apos;', "'").replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
 
 def format_date(date_str):
-    """날짜 형식 변환"""
     try:
         dt = parsedate_to_datetime(date_str)
         return dt.strftime('%Y-%m-%d %H:%M')
     except: return date_str
 
 def main():
-    url = f"https://openapi.naver.com/v1/search/news.json?query={KEYWORD}&display=50&sort=date"
+    # 1. 이미 처리한 기사 목록 불러오기
+    processed_links = get_processed_links()
+
+    # 2. 네이버 API 호출 (최대 100개로 범위 확장)
+    url = f"https://openapi.naver.com/v1/search/news.json?query={KEYWORD}&display=100&sort=date"
     headers = {"X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET}
     
     try:
@@ -47,25 +60,20 @@ def main():
         print(f"네이버 API 호출 실패: {e}")
         return
 
-    if not items: return
-
-    # 마지막 기사 링크 확인
-    last_link = ""
-    if os.path.exists(FILE_PATH):
-        with open(FILE_PATH, "r") as f: last_link = f.read().strip()
-
+    # 3. 새로운 기사만 필터링 (CSV에 없는 링크만 추출)
     new_articles = []
     for item in items:
-        if item['link'] == last_link: break
-        new_articles.append(item)
+        if item['link'] not in processed_links:
+            new_articles.append(item)
     
+    # 오래된 기사부터 알림이 오도록 순서 뒤집기
     new_articles.reverse()
 
+    # 4. 새 기사 알림 및 저장
     for article in new_articles:
         title = clean_html(article['title'])
         pub_date = format_date(article['pubDate'])
         
-        # 텔레그램 메시지 구성 (심플 버전)
         message = (
             f"📢 **NPS 새 기사 알림**\n\n"
             f"📌 **제목:** {title}\n"
@@ -77,13 +85,11 @@ def main():
         send_url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
         requests.get(send_url, params={"chat_id": TG_CHAT_ID, "text": message, "parse_mode": "Markdown"})
         
-        # CSV 데이터 저장
+        # CSV에 즉시 저장하여 다음 실행 때 중복 안 되게 함
         save_to_csv([pub_date, title, article['link']])
-        time.sleep(1)
+        time.sleep(1) # 전송 간격 조절
 
-    # 마지막 기사 업데이트
-    if items:
-        with open(FILE_PATH, "w") as f: f.write(items[0]['link'])
+    print(f"처리 완료: 새 기사 {len(new_articles)}건 발견")
 
 if __name__ == "__main__":
     main()
