@@ -44,3 +44,11 @@ jobs:
           git add last_link.txt
           git commit -m "Update last link [skip ci]" || exit 0
           git push
+
+      - name: Commit and Push CSV changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add news_history.csv last_link.txt
+          git commit -m "Update news history and last link [skip ci]" || echo "No changes to commit"
+          git push
