@@ -74,20 +74,32 @@ def main():
         title = clean_html(article['title'])
         pub_date = format_date(article['pubDate'])
         
+        # 1. 메시지 형식을 HTML 태그로 변경 (<b>는 굵게, <a>는 링크)
         message = (
-            f"📢 **NPS 새 기사 알림**\n\n"
-            f"📌 **제목:** {title}\n"
-            f"⏰ **발표:** {pub_date}\n"
-            f"🔗 **링크:** {article['link']}"
+            f"<b>📢 NPS 새 기사 알림</b>\n\n"
+            f"📌 <b>제목:</b> {title}\n"
+            f"⏰ <b>발표:</b> {pub_date}\n"
+            f"🔗 <b>링크:</b> <a href='{article['link']}'>기사 바로가기</a>"
         )
         
-        # 텔레그램 전송
+        # 2. params에서 parse_mode를 HTML로 설정
         send_url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-        requests.get(send_url, params={"chat_id": TG_CHAT_ID, "text": message, "parse_mode": "Markdown"})
+        params = {
+            "chat_id": TG_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML", # 마크다운 대신 HTML!
+            "disable_web_page_preview": False # 기사 미리보기 허용
+        }
         
-        # CSV에 즉시 저장하여 다음 실행 때 중복 안 되게 함
-        save_to_csv([pub_date, title, article['link']])
-        time.sleep(1) # 전송 간격 조절
+        response = requests.get(send_url, params=params)
+        
+        # 3. 전송 성공 시에만 CSV 저장 (이게 안전합니다)
+        if response.status_code == 200:
+            save_to_csv([pub_date, title, article['link']])
+        else:
+            print(f"전송 실패 사유: {response.text}")
+
+        time.sleep(1)
 
     print(f"처리 완료: 새 기사 {len(new_articles)}건 발견")
 
