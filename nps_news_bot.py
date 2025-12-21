@@ -13,15 +13,18 @@ TG_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TG_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
-# Gemini 클라이언트 설정 (신형 문법)
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Gemini 클라이언트 설정
+client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options={'api_version': 'v1'}
+)
 
 KEYWORD = '"국민연금" "김성주"'
 FILE_PATH = "last_link.txt"
 CSV_FILE = "news_history.csv"
 
 def analyze_with_gemini(title, description):
-    """Gemini 1.5 Flash를 이용한 AI 분석 및 감성 추출"""
+    """Gemini 1.5 Flash 분석 (최적화 버전)"""
     prompt = f"""
     당신은 홍보실 뉴스 분석 전문가입니다. 아래 뉴스를 분석해 감성과 3줄 요약을 작성하세요.
     반드시 아래 형식을 엄격히 지켜주세요.
@@ -36,21 +39,25 @@ def analyze_with_gemini(title, description):
     뉴스 내용: {description}
     """
     try:
-        # 신형 SDK 호출 방식
+        # 모델 이름 앞에 'models/'를 붙여 경로를 더 확실히 합니다.
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-1.5-flash', 
             contents=prompt
         )
+        
+        # 답변이 비어있을 경우를 대비한 안전장치
+        if not response or not response.text:
+            return "분석 결과 없음", "중립"
+            
         content = response.text
         
-        # CSV 저장용 감성 태그 추출
         sentiment = "중립"
         if "우호" in content or "긍정" in content: sentiment = "우호"
         elif "부정" in content or "비판" in content: sentiment = "부정"
             
         return content, sentiment
     except Exception as e:
-        print(f"⚠️ Gemini API 호출 에러: {e}")
+        print(f"⚠️ Gemini API 호출 에러 상세: {e}")
         return f"AI 분석 실패 (사유: {e})", "중립"
 
 def save_to_csv(data):
