@@ -2,16 +2,15 @@ name: NPS CEO News Monitor Bot
 
 on:
   schedule:
-    #- cron: '*/1 0-13,21-23 * * *'  # 1분마다 자동 실행, UTC 21:00 - 23:59(KST 06:00 - 08:59), UTC 00:00 - 13:59 (KST 09:00 - 22:59)
     - cron: '*/1 * * * *'  # 1분마다 자동 실행
-  workflow_dispatch:      # 우리가 수동으로 실행해볼 수 있게 함
+  workflow_dispatch:      # 수동 실행 허용
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: write   # 파일 쓰기 권한
+      contents: write     # 파일 쓰기 권한 필수
       pull-requests: write
 
     steps:
@@ -40,13 +39,12 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add news_history.csv
+          
+          # news_history.csv 파일이 있을 때만 스테이징에 추가합니다.
+          if [ -f news_history.csv ]; then
+            git add news_history.csv
+          fi
+          
+          # 변경사항(새로운 기사)이 있을 때만 커밋하고 푸시합니다.
+          # [skip ci]를 넣어 액션 재실행을 방지합니다.
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update news history [skip ci]" && git push)
-
-      - name: Commit and Push CSV changes
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          git add news_history.csv last_link.txt
-          git commit -m "Update news history and last link [skip ci]" || echo "No changes to commit"
-          git push
