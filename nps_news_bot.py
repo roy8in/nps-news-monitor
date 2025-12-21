@@ -17,7 +17,7 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # Gemini AI 설정
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 KEYWORD = '"국민연금" "김성주"'
 FILE_PATH = "last_link.txt"
