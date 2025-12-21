@@ -78,7 +78,7 @@ def format_date(date_str):
         return date_str
 
 def main():
-    url = f"https://openapi.naver.com/v1/search/news.json?query={KEYWORD}&display=10&sort=date"
+    url = f"https://openapi.naver.com/v1/search/news.json?query={KEYWORD}&display=30&sort=date"
     headers = {"X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET}
     
     res = requests.get(url, headers=headers).json()
