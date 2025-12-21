@@ -23,28 +23,37 @@ KEYWORD = '"국민연금" "김성주"'
 FILE_PATH = "last_link.txt"
 
 def analyze_with_gemini(title, description):
-    """AI 분석 및 정형 데이터 추출"""
+    """더 정교해진 AI 분석 및 데이터 추출"""
+    # AI에게 답변 형식을 더 엄격하게 요구합니다.
     prompt = f"""
-    당신은 홍보실 뉴스 분석관입니다. 아래 뉴스를 분석해 '감성'과 '요약'을 구분해서 답하세요.
-    중요: '감성'은 반드시 [우호, 중립, 부정] 중 하나로만 답변하세요.
+    당신은 홍보실 뉴스 분석 전문가입니다. 아래 뉴스를 분석해 감성과 3줄 요약을 작성하세요.
+    반드시 아래 형식을 엄격히 지켜주세요.
+    
+    [감성]: 우호, 중립, 부정 중 하나를 선택
+    [요약]:
+    1. 핵심내용
+    2. 핵심내용
+    3. 핵심내용
 
-    기사 제목: {title}
-    내용: {description}
-
-    형식:
-    감성: 우호
-    요약: 3줄 요약 내용...
+    뉴스 제목: {title}
+    뉴스 내용: {description}
     """
     try:
         response = model.generate_content(prompt)
         content = response.text
-        # 감성 결과만 따로 추출하는 로직 (CSV 저장용)
+        
+        # 감성 판별 로직 강화 (단어 포함 여부 확인)
         sentiment = "중립"
-        if "우호" in content: sentiment = "우호"
-        elif "부정" in content: sentiment = "부정"
+        if "우호" in content:
+            sentiment = "우호"
+        elif "부정" in content:
+            sentiment = "부정"
+            
         return content, sentiment
-    except:
-        return "분석 실패", "중립"
+    except Exception as e:
+        # 에러 발생 시 어떤 에러인지 로그에 남깁니다.
+        print(f"⚠️ Gemini API 호출 중 상세 에러 발생: {e}")
+        return f"AI 분석 실패 (사유: {e})", "중립"
 
 def save_to_csv(data):
     """기사 정보를 CSV에 누적 저장"""
