@@ -18,49 +18,47 @@ FILE_PATH = "last_link.txt"
 CSV_FILE = "news_history.csv"
 
 def analyze_with_gemini(title, description):
-    """라이브러리 없이 직접 Gemini API를 호출하는 가장 확실한 방법"""
-    # v1beta 주소를 사용하여 모델 인식 오류를 원천 차단합니다.
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    """
+    모든 경로 문제를 우회하기 위해 가장 안정적인 v1 주소를 사용하며, 
+    실패 시 대체 모델을 시도하는 강인한 로직입니다.
+    """
+    # 1. 가장 표준적인 v1 API 주소를 사용합니다.
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
-    
-    prompt = f"""
-    당신은 홍보실 뉴스 분석 전문가입니다. 아래 뉴스를 분석해 감성과 3줄 요약을 작성하세요.
-    반드시 아래 형식을 엄격히 지켜주세요.
-    
-    [감성]: 우호, 중립, 부정 중 하나를 선택
-    [요약]:
-    1. 핵심내용
-    2. 핵심내용
-    3. 핵심내용
-
-    뉴스 제목: {title}
-    뉴스 내용: {description}
-    """
+    prompt = f"뉴스 제목: {title}\n내용: {description}\n위 기사를 이사장 관점에서 우호/중립/부정 중 하나로 판별하고 3줄 요약해줘."
     
     payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }]
+        "contents": [{"parts": [{"text": prompt}]}]
     }
 
     try:
+        # 첫 번째 시도: gemini-1.5-flash
         response = requests.post(url, headers=headers, json=payload)
+        
+        # 만약 404가 뜬다면, 모델명을 'gemini-pro'로 바꿔서 한 번 더 시도합니다.
+        if response.status_code == 404:
+            print("⚠️ Flash 모델을 찾을 수 없어 Pro 모델로 재시도합니다.")
+            alt_url = url.replace("gemini-1.5-flash", "gemini-pro")
+            response = requests.post(alt_url, headers=headers, json=payload)
+
         res_json = response.json()
         
-        # API 응답에서 텍스트만 추출
-        content = res_json['candidates'][0]['content']['parts'][0]['text']
-        
-        sentiment = "중립"
-        if "우호" in content or "긍정" in content: sentiment = "우호"
-        elif "부정" in content or "비판" in content: sentiment = "부정"
-            
-        return content, sentiment
-    except Exception as e:
-        # 에러 발생 시 서버 응답 전문을 출력하여 디버깅을 돕습니다.
-        print(f"⚠️ Gemini API 호출 에러 상세: {response.text if 'response' in locals() else e}")
-        return "AI 분석 실패 (API 응답 오류)", "중립"
+        # 정상 응답 시 텍스트 추출
+        if 'candidates' in res_json:
+            content = res_json['candidates'][0]['content']['parts'][0]['text']
+            sentiment = "중립"
+            if any(x in content for x in ["우호", "긍정", "좋음"]): sentiment = "우호"
+            elif any(x in content for x in ["부정", "비판", "나쁨"]): sentiment = "부정"
+            return content, sentiment
+        else:
+            print(f"❌ API 응답 오류: {res_json}")
+            return "AI 분석 실패 (형식 오류)", "중립"
 
+    except Exception as e:
+        print(f"❌ 네트워크 에러: {e}")
+        return "AI 분석 실패 (연결 오류)", "중립"
+        
 # --- 아래는 기존과 동일하지만 데이터 저장을 위해 최적화됨 ---
 
 def save_to_csv(data):
