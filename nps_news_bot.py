@@ -79,6 +79,7 @@ def main():
             f"<b>📢 NPS 새 기사 알림</b>\n\n"
             f"📌 <b>제목:</b> {title}\n"
             f"⏰ <b>발표:</b> {pub_date}\n"
+            f"🔗 <b>링크:</b> <a href='{article['link']}'>기사 바로가기</a>"
         )
         
         # 2. params에서 parse_mode를 HTML로 설정
