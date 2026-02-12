@@ -1,1 +1,10 @@
-requests
+autopep8==2.3.2
+certifi==2026.1.4
+charset-normalizer==3.4.4
+flake8==7.3.0
+idna==3.11
+mccabe==0.7.0
+pycodestyle==2.14.0
+pyflakes==3.4.0
+requests==2.32.5
+urllib3==2.6.3
