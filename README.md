@@ -11,7 +11,7 @@
 
 ## ✨ 주요 기능
 
-* **실시간 모니터링**: 5~10분 간격으로 네이버 뉴스를 자동 검색합니다.
+* **실시간 모니터링**: 약 15분 간격으로 네이버 뉴스를 자동 검색합니다.
 * **정교한 키워드 필터링**: `"국민연금"`, `"김성주"` 조합을 통해 동명이인 오보도를 최소화합니다.
 * **상세 정보 제공**: 기사 제목, 요약문, 발행 시간, 언론사 정보를 포함한 메시지를 전송합니다.
 
@@ -46,4 +46,4 @@
 * **Language**: Python 3.9+
 * **Infrastructure**: GitHub Actions
 * **API**: Naver Search API, Telegram Bot API
-* **Database**: (기사 목록)[https://github.com/roy8in/nps-news-monitor/blob/main/news_history.csv]
+* **Database**: [기사 목록](https://github.com/roy8in/nps-news-monitor/blob/main/news_history.csv)
