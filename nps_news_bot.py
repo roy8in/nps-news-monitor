@@ -3,6 +3,8 @@ import requests
 import time
 import csv
 import difflib
+import re
+import html
 from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 
@@ -60,7 +62,9 @@ def save_to_csv(data):
 
 def clean_html(text):
     if not text: return ""
-    return text.replace('<b>', '').replace('</b>', '').replace('&quot;', '"').replace('&apos;', "'").replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    text = html.unescape(text) # &quot;, &amp; 등 HTML 엔티티 일괄 처리
+    text = re.sub(r'<[^>]+>', '', text) # 남아있는 HTML 태그 전부 제거
+    return text.strip()
 
 def format_date(date_str):
     try:
@@ -68,11 +72,28 @@ def format_date(date_str):
         return dt.strftime('%Y-%m-%d %H:%M')
     except: return date_str
 
-def is_similar(new_title, existing_titles, threshold=0.7):
+def is_similar(new_title, existing_titles, threshold=0.55):
     """새 제목이 기존(최근 24시간) 제목들과 유사한지 검사합니다."""
+    def normalize(text):
+        # 언론사에서 흔히 붙이는 [단독], (종합), 【서울=뉴시스】 등의 괄호 내용 제거
+        text = re.sub(r'\[.*?\]|\(.*?\)|【.*?】|<.*?>', '', text)
+        # 공백 및 특수문자를 제거하고 순수 핵심 문자와 숫자만 남김
+        return re.sub(r'[^가-힣A-Za-z0-9]', '', text)
+        
+    norm_new = normalize(new_title)
+    # 정규화 후 빈 문자열이 되는 경우 (거의 없지만 방어코드) 원래 문자열의 공백만 제거해서 사용
+    if not norm_new:
+        norm_new = new_title.replace(" ", "")
+
     for title in existing_titles:
-        if difflib.SequenceMatcher(None, new_title, title).ratio() >= threshold:
+        norm_existing = normalize(title)
+        if not norm_existing:
+            norm_existing = title.replace(" ", "")
+            
+        # 정규화된 텍스트끼리 55% 이상 일치하면 같은 이슈로 판단
+        if difflib.SequenceMatcher(None, norm_new, norm_existing).ratio() >= threshold:
             return True
+            
     return False
 
 def main():
@@ -87,7 +108,6 @@ def main():
         res = requests.get(url, headers=headers).json()
         items = res.get('items', [])
     except Exception as e:
-        print(f"네이버 API 호출 실패: {e}")
         return
 
     # 3. 새로운 기사만 필터링 (CSV에 없는 URL만 추출)
@@ -107,7 +127,6 @@ def main():
         
         # 4-1. 유사도 검사 (최근 24시간 내 기사와 비교)
         if is_similar(title, recent_titles):
-            print(f"🚫 유사 기사 저장 (전송 생략): {title}")
             # 전송은 안 하지만, 기록은 남김 (URL 중복 방지 + 히스토리)
             save_to_csv([pub_date, title, link])
             processed_links.add(link)
@@ -138,14 +157,10 @@ def main():
                 save_to_csv([pub_date, title, link])
                 recent_titles.append(title)
                 processed_links.add(link)
-            else:
-                print(f"전송 실패: {response.text}")
         except Exception as e:
-            print(f"전송 중 에러 발생: {e}")
+            pass
 
         time.sleep(1)
-
-    print(f"처리 완료: 새 기사 {len(new_articles)}건 발견 (유사 기사 포함)")
 
 if __name__ == "__main__":
     main()
