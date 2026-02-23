@@ -1,6 +1,7 @@
 name: NPS CEO News Monitor Bot
 
 on:
+  workflow_dispatch:
   schedule:
     # 1. 한국시간 06:50 ~ 06:59 (세계표준시 전날 21:50, 21:55)
     - cron: '50,55 21 * * *'
